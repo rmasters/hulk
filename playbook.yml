@@ -1,0 +1,43 @@
+- name: Provision for science
+  hosts: all
+  become: yes
+  tasks:
+    - name: apt update/upgrade
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        name: '*'
+        state: latest
+
+    - name: install essential toybox
+      apt:
+        name:
+          - vim
+          - tmux
+          - htop
+          - git
+        state: present
+
+    - name: compilation crap
+      apt:
+        name:
+          - build-essential
+          - linux-headers-{{ ansible_kernel }}
+        state: present
+
+    - import_tasks: docker.yml
+      tags: [docker]
+
+    - name: install current nvidia drivers
+      apt:
+        name:
+          - nvidia-headless-530
+          - nvidia-utils-530
+        state: present
+      tags: [nvidia, drivers]
+
+    - import_tasks: cuda.yml
+      tags: [nvidia, cuda]
+
+    - import_tasks: container-toolkit.yml
+      tags: [nvidia, containers]

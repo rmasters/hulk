@@ -1,0 +1,37 @@
+# Run gpu apps in docker
+# https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+
+- name: get libnvidia-container key
+  apt_key:
+    url: https://nvidia.github.io/libnvidia-container/gpgkey
+    keyring: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+    state: present
+
+- name: add libnvidia-container repo
+  apt_repository:
+    repo: deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/$(ARCH) /
+    filename: nvidia-container-toolkit
+    state: present
+
+- name: install container toolkit
+  apt:
+    name:
+      - nvidia-container-toolkit
+      - nvidia-container-toolkit-base
+    update_cache: true
+
+- name: generate a CDI specification for all gpu devices
+  command: nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+
+- name: configure docker to recognise nvidia container runtime
+  command: nvidia-ctk runtime configure --runtime=docker
+
+- name: restart docker
+  service:
+    name: docker
+    state: restarted
+
+- name: test nvidia container toolkit
+  command: docker run --rm --runtime=nvidia --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
+  register: nvidia_smi
+  failed_when: 'nvidia_smi.rc != 0 or nvidia_smi.stdout.find("NVIDIA-SMI") == -1'
